@@ -7,6 +7,7 @@ import dotenv
 import weather
 import db
 
+
 def set_handler_key(class_: type) -> type:
     dotenv.load_dotenv()
     connection, cursor = db.connect()
@@ -15,10 +16,45 @@ def set_handler_key(class_: type) -> type:
     setattr(class_, 'db_cursor', cursor)
     return class_
 
+
+def get_query(path: str) -> dict:
+    qm_mark = '?'
+    qm_index = path.find(qm_mark)
+    if qm_index == -1 or qm_index == len(path) - 1:
+        return {}
+    query = {}
+    path = path[qm_index+1:]
+    for pair in path.split('&'):
+        if '=' not in pair:
+            continue
+        attr, value = path.split('=')
+        if value.isdigit():
+            query[attr] = int(value)
+            continue
+        try:
+            number = float(value)
+        except ValueError:
+            query[attr] = value
+        else:
+            query[attr] = number
+    return query
+
+
 class RequestHandler(BaseHTTPRequestHandler):
+    def weather(self) -> None:
+        query = get_query(self.path)
+        city_name = query.get('city')
+        if city_name:
+            coords = db.get_coords(self.db_cursor, city_name)
+            if coords:
+                lat, lon = coords
+                weather_data = weather.get_weather(lat, lon, self.yandex_key)
+                return views.weather_page(weather_data)
+        return views.weather_dummy_page()
+
     def page(self) -> str:
         if self.path.startswith('/weather'):
-            return views.weather_page(weather.get_weather(1.0, 1.0, self.yandex_key))
+            return self.weather()
         elif self.path.startswith('/cities'):
             cities = db.get_cities(self.db_cursor)
             return views.cities_page(cities)

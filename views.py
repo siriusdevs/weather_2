@@ -1,4 +1,4 @@
-from config import MAIN_TEMPLATE, WEATHER_TEMPLATE, CITIES_TEMPLATES
+from config import MAIN_TEMPLATE, WEATHER_TEMPLATE, CITIES_TEMPLATES, WEATHER_DUMMY_TEMPLATE
 from typing import Optional
 
 
@@ -24,3 +24,7 @@ def cities_page(cities: list[tuple]) -> str:
 def html_from_cities(cities: list[tuple]) -> str:
     start = '<li> <a href="/weather?city='
     return '\n'.join(f'{start}{city}">{city}</a>, lat:{lat}, lon:{lon}</li>' for city, lat, lon in cities)
+
+
+def weather_dummy_page() -> str:
+    return _load(WEATHER_DUMMY_TEMPLATE)

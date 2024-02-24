@@ -5,6 +5,7 @@ TEMPLATES = 'templates/'
 MAIN_TEMPLATE = f'{TEMPLATES}index.html'
 WEATHER_TEMPLATE = f'{TEMPLATES}weather.html'
 CITIES_TEMPLATES = f'{TEMPLATES}cities.html'
+WEATHER_DUMMY_TEMPLATE = f'{TEMPLATES}weather_dummy.html'
 
 CONTENT_HEADER = 'Content-Type', 'text/html'
 

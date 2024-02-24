@@ -24,3 +24,8 @@ def connect() -> tuple[psycopg.Connection, psycopg.Cursor]:
 def get_cities(cursor: psycopg.Cursor) -> list[tuple]:
     cursor.execute(db_query.GET_CITIES)
     return cursor.fetchall()
+
+
+def get_coords(cursor: psycopg.Cursor, city_name: str) -> tuple[float, float]:
+    cursor.execute(db_query.GET_COORDS, params=(city_name,))
+    return cursor.fetchone()
