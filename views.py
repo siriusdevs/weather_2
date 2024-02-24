@@ -26,5 +26,9 @@ def html_from_cities(cities: list[tuple]) -> str:
     return '\n'.join(f'{start}{city}">{city}</a>, lat:{lat}, lon:{lon}</li>' for city, lat, lon in cities)
 
 
-def weather_dummy_page() -> str:
-    return _load(WEATHER_DUMMY_TEMPLATE)
+def weather_dummy_page(cities_names: list[str]) -> str:
+    return _load(WEATHER_DUMMY_TEMPLATE, {'options': form_options(cities_names)})
+
+
+def form_options(values: list[str]) -> str:
+    return '\n'.join(f'<option value={value}> {value} </option>' for value in values)

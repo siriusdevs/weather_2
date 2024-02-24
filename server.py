@@ -50,7 +50,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                 lat, lon = coords
                 weather_data = weather.get_weather(lat, lon, self.yandex_key)
                 return views.weather_page(weather_data)
-        return views.weather_dummy_page()
+        cities_names = db.get_cities_names(self.db_cursor)
+        return views.weather_dummy_page(cities_names)
 
     def page(self) -> str:
         if self.path.startswith('/weather'):

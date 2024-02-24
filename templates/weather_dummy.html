@@ -8,7 +8,13 @@
         <h3>
             Weather
         </h3>
-
+        <form id="weather_form" action="/weather">
+            <select id="weather" name="city" form="weather_form">
+                {options}
+            </select>
+            <br><br>
+            <input type="submit">
+        </form>
         <a href="/cities">Cities page</a>
         <br>
         <a href="/">Main page</a>

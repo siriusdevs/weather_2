@@ -26,6 +26,10 @@ def get_cities(cursor: psycopg.Cursor) -> list[tuple]:
     return cursor.fetchall()
 
 
+def get_cities_names(cursor: psycopg.Cursor) -> list[str]:
+    return [city for city, _, _ in get_cities(cursor)]
+
+
 def get_coords(cursor: psycopg.Cursor, city_name: str) -> tuple[float, float]:
     cursor.execute(db_query.GET_COORDS, params=(city_name,))
     return cursor.fetchone()
