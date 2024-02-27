@@ -33,3 +33,23 @@ def get_cities_names(cursor: psycopg.Cursor) -> list[str]:
 def get_coords(cursor: psycopg.Cursor, city_name: str) -> tuple[float, float]:
     cursor.execute(db_query.GET_COORDS, params=(city_name,))
     return cursor.fetchone()
+
+
+def insert_city(
+    cursor: psycopg.Cursor, 
+    connection: psycopg.Connection,
+    city_params: tuple,
+) -> bool:
+    cursor.execute(db_query.INSERT_CITY, params=city_params)
+    connection.commit()
+    return bool(cursor.rowcount)
+
+
+def delete_city(
+    cursor: psycopg.Cursor, 
+    connection: psycopg.Connection,
+    city_name: str,
+) -> int:
+    cursor.execute(db_query.DELETE_CITY, params=(city_name,))
+    connection.commit()
+    return cursor.rowcount

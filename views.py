@@ -31,4 +31,12 @@ def weather_dummy_page(cities_names: list[str]) -> str:
 
 
 def form_options(values: list[str]) -> str:
-    return '\n'.join(f'<option value={value}> {value} </option>' for value in values)
+    return '\n'.join(f'<option value="{value}"> {value} </option>' for value in values)
+
+
+def plusses_to_spaces(text: str) -> str:
+    return text.replace('+', ' ')
+
+
+def spaces_to_plusses(text: str) -> str: # NOTE useless
+    return text.replace(' ', '+')
