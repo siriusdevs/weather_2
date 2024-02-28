@@ -66,9 +66,9 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def respond(self,
         code: int, 
+        body: Optional[bytes] = None,
         code_message: Optional[str] = None,
         headers: Optional[dict] = None,
-        body: Optional[bytes] = None,
     ) -> None:
         if code_message:
             self.send_response(code, code_message)
@@ -80,7 +80,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_header(header_key, header_value)
         self.end_headers()
         if body:
-            self.wfile.write(body)
+            self.wfile.write(body.encode())
 
     def do_GET(self) -> None:
         try:
@@ -90,40 +90,67 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.db_connection.rollback()
         else:
             code = http_codes.OK
-        self.respond(code, body=page.encode() if page else None)
+        self.respond(code, page)
 
-    def change_not_allowed(self) -> None:
-        if not self.path.startswith('/cities'):
+    def check_change_allowed(self) -> bool:
+        return any(self.path.startswith(page) for page in config.PAGES_CHANGES_ALLOWED)
+
+    def change_allowed(self) -> bool:
+        if not self.check_change_allowed():
             self.respond(http_codes.NOT_ALLOWED, headers=config.ALLOW_READ)
-            return True
-        return False
+            return False
+        return True
+    
+    def check_auth(self) -> bool:
+        if config.KEY_HEADER not in self.headers.keys():
+            return False
+        return db.check_token(self.db_cursor, self.headers.get(config.KEY_HEADER))
+    
+    def auth(self) -> bool:
+        if not self.check_auth():
+            self.respond(http_codes.FORBIDDEN)
+            return False
+        return True
 
-    def do_POST(self) -> None:
-        if self.change_not_allowed():
-            return
+    def auth_and_allow(self) -> bool:
+        if not self.change_allowed():
+            return False
+        if not self.auth():
+            return False
+        return True
+
+    def read_json_body(self) -> dict | None:        
         content_len = self.headers.get(config.CONTENT_LENGTH)
         if not content_len or not content_len.isdigit():
             msg = f'{config.CONTENT_LENGTH} header is not specified or not int'
-            self.respond(http_codes.BAD_REQUEST, body=msg.encode())
+            self.respond(http_codes.BAD_REQUEST, msg.encode())
             return
         body = self.rfile.read(int(content_len))
         try:
-            content = json.loads(body)
+            return json.loads(body)
         except json.JSONDecodeError as error:
-            self.respond(http_codes.BAD_REQUEST, body=str(error).encode())
+            self.respond(http_codes.BAD_REQUEST, str(error).encode())
+            return None
+
+    def do_POST(self) -> None:
+        if not self.auth_and_allow():
+            return
+        content = self.read_json_body()
+        if content is None:
             return
         if set(config.CITY_REQUIRED_KEYS) != set(content.keys()):
             msg = f'wrong body json keys, required keys are: {config.CITY_REQUIRED_KEYS}'
-            self.respond(http_codes.BAD_REQUEST, body=msg.encode())
+            self.respond(http_codes.BAD_REQUEST, msg)
             return
         city_params = [content[attr] for attr in config.CITY_REQUIRED_KEYS]
         try:
             added = db.insert_city(self.db_cursor, self.db_connection, city_params)
         except psycopg.errors.UniqueViolation:
-            self.respond(http_codes.BAD_REQUEST, body='already exists'.encode())
+            self.respond(http_codes.BAD_REQUEST, 'already exists')
             self.db_connection.rollback()
+            return
         except psycopg.Error as error:
-            self.respond(http_codes.SERVER_ERROR, body=str(error).encode())
+            self.respond(http_codes.SERVER_ERROR, str(error))
             self.db_connection.rollback()
             return
         if added:
@@ -132,31 +159,56 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.respond(http_codes.NO_CONTENT)
 
     def do_DELETE(self) -> None:
-        if self.change_not_allowed():
+        if not self.auth_and_allow():
             return
         city_key = 'name'
         query = get_query(self.path)
         city = query.get(city_key)
         if not city:
             msg = f'city key {city_key} is not provided'
-            self.respond(http_codes.BAD_REQUEST, body=msg.encode())
+            self.respond(http_codes.BAD_REQUEST, msg)
             return
         try:
             rows = db.delete_city(self.db_cursor, self.db_connection, city)
         except psycopg.Error as error:
-            self.respond(http_codes.SERVER_ERROR, body=str(error).encode())
+            self.respond(http_codes.SERVER_ERROR, str(error))
             self.db_connection.rollback()
             return
         if rows > 1:
             msg = f'all cities with name={city} deleted'
-            self.respond(http_codes.OK, body=msg.encode())
+            self.respond(http_codes.OK, msg)
         elif rows == 1:
             self.respond(http_codes.NO_CONTENT)
         else:
             msg = f'matching city with name={city} not found'
-            self.respond(http_codes.OK, body=msg.encode())
+            self.respond(http_codes.OK, msg)
 
-        
+    def do_PUT(self) -> None:
+        if not self.auth_and_allow():
+            return
+        city_key = 'name'
+        query = get_query(self.path)
+        city = query.get(city_key)
+        if city is None or not db.check_city(self.db_cursor, city):
+            self.do_POST()
+            return
+        content = self.read_json_body()
+        if content is None:
+            self.respond(http_codes.BAD_REQUEST, f'PUT must include message body')
+            return
+        for key in content.keys():
+            if key not in config.CITY_REQUIRED_KEYS:
+                self.respond(http_codes.BAD_REQUEST, f'key {key} is not specified for instance')
+                return
+        if db.update_city(self.db_cursor, self.db_connection, content, city):
+            self.respond(http_codes.OK, f'instance {city} was updated')
+        else:
+            self.respond(http_codes.SERVER_ERROR, f'failed to update instance {city}')
+
+    def do_HEAD(self) -> None:
+        self.respond(http_codes.OK)
+
+
 if __name__ == '__main__':
     server = HTTPServer((config.HOST, config.PORT), set_handler_key(RequestHandler))
     try:
