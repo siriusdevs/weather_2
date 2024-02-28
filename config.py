@@ -9,6 +9,7 @@ WEATHER_DUMMY_TEMPLATE = f'{TEMPLATES}weather_dummy.html'
 
 CONTENT_HEADER = 'Content-Type', 'text/html'
 CONTENT_LENGTH = 'Content-Length'
+LOCATION_HEADER = 'Content-Location'
 KEY_HEADER = 'WEATHER_API_KEY'
 
 YANDEX_URL = 'https://api.weather.yandex.ru/v2/informers'

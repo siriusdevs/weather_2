@@ -154,7 +154,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.db_connection.rollback()
             return
         if added:
-            self.respond(http_codes.CREATED) # TODO header content-location
+            location = {config.LOCATION_HEADER: f'/cities?name={content["name"]}'}
+            self.respond(http_codes.CREATED, headers=location)
         else:
             self.respond(http_codes.NO_CONTENT)
 
